@@ -3,10 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#0a0e1a" />
+    <meta name="theme-color" content="#ffb6d5" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <title>Glyph Grid</title>
+    <title>Sugar Drop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
@@ -16,22 +19,27 @@
           <span class="hud-label">SCORE</span>
           <span id="score" class="hud-value">0</span>
         </div>
-        <div class="hud-cell">
+        <div class="hud-cell hud-best">
           <span class="hud-label">BEST</span>
           <span id="best" class="hud-value">0</span>
         </div>
-        <div class="hud-cell">
+        <div class="hud-cell hud-combo">
           <span class="hud-label">COMBO</span>
           <span id="combo" class="hud-value">x1</span>
         </div>
       </header>
+      <div class="audio-controls">
+        <button id="toggle-music" class="audio-btn" aria-label="Toggle music" title="Music">&#9835;</button>
+        <button id="toggle-sfx" class="audio-btn" aria-label="Toggle sound effects" title="Sound effects">&#128266;</button>
+      </div>
       <canvas id="board"></canvas>
       <div id="overlay" class="overlay hidden">
         <div class="overlay-card">
-          <h1 class="overlay-title">SYSTEM HALT</h1>
-          <p class="overlay-sub">No valid placements remain.</p>
+          <div class="overlay-emoji">&#127853;</div>
+          <h1 class="overlay-title">SWEET END!</h1>
+          <p class="overlay-sub">No more room for candies.</p>
           <p class="overlay-score"><span id="final-score">0</span></p>
-          <button id="restart" class="btn">REBOOT</button>
+          <button id="restart" class="btn">PLAY AGAIN</button>
         </div>
       </div>
     </div>

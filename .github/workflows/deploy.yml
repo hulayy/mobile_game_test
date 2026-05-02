@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - claude/mobile-game-plan-iS2ih
+      - claude/candy-crush-redesign-Achsb
   workflow_dispatch:
 
 permissions:

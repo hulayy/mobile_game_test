@@ -97,7 +97,8 @@ export class Renderer {
 
   private ambient: AmbientParticle[] = [];
   private ambientSeeded = false;
-  private bgGradientCache: { w: number; h: number; grad: CanvasGradient } | null = null;
+  private sceneCanvas: HTMLCanvasElement | null = null;
+  private sceneCacheKey = '';
   private lastFrameT = 0;
 
   constructor(canvas: HTMLCanvasElement) {
@@ -111,7 +112,8 @@ export class Renderer {
     this.theme = theme;
     this.ambient = [];
     this.ambientSeeded = false;
-    this.bgGradientCache = null;
+    this.sceneCanvas = null;
+    this.sceneCacheKey = '';
   }
 
   resize(): void {
@@ -135,7 +137,8 @@ export class Renderer {
     const traySlotWidth = Math.floor(cssWidth / 3);
 
     this.layout = { cellSize, gridX, gridY, gridPx, trayY, trayCellSize, traySlotWidth };
-    this.bgGradientCache = null;
+    this.sceneCanvas = null;
+    this.sceneCacheKey = '';
   }
 
   drawFrame(grid: Grid, tray: (Piece | null)[], drag: DragState | null, now: number): void {
@@ -159,13 +162,8 @@ export class Renderer {
 
   private drawBackground(w: number, h: number, now: number, dt: number): void {
     const ctx = this.ctx;
-    if (!this.bgGradientCache || this.bgGradientCache.w !== w || this.bgGradientCache.h !== h) {
-      const grad = ctx.createLinearGradient(0, 0, 0, h);
-      for (const [offset, color] of this.theme.bgStops) grad.addColorStop(offset, color);
-      this.bgGradientCache = { w, h, grad };
-    }
-    ctx.fillStyle = this.bgGradientCache.grad;
-    ctx.fillRect(0, 0, w, h);
+    const scene = this.getSceneCanvas(w, h);
+    ctx.drawImage(scene, 0, 0, w, h);
 
     if (!this.ambientSeeded) {
       for (let i = 0; i < this.theme.ambientCount; i++) {
@@ -176,6 +174,325 @@ export class Renderer {
 
     this.updateAndDrawAmbient(w, h, dt);
     void now;
+  }
+
+  private getSceneCanvas(w: number, h: number): HTMLCanvasElement {
+    const key = `${this.theme.id}-${w}x${h}-${this.dpr}`;
+    if (this.sceneCanvas && this.sceneCacheKey === key) return this.sceneCanvas;
+    const off = document.createElement('canvas');
+    off.width = Math.floor(w * this.dpr);
+    off.height = Math.floor(h * this.dpr);
+    const c = off.getContext('2d');
+    if (!c) return off;
+    c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    this.renderScene(c, w, h);
+    this.sceneCanvas = off;
+    this.sceneCacheKey = key;
+    return off;
+  }
+
+  private renderScene(c: CanvasRenderingContext2D, w: number, h: number): void {
+    const grad = c.createLinearGradient(0, 0, 0, h);
+    for (const [offset, color] of this.theme.bgStops) grad.addColorStop(offset, color);
+    c.fillStyle = grad;
+    c.fillRect(0, 0, w, h);
+    switch (this.theme.id) {
+      case 'candy': this.sceneCandy(c, w, h); break;
+      case 'forest': this.sceneForest(c, w, h); break;
+      case 'lava': this.sceneLava(c, w, h); break;
+      case 'ocean': this.sceneOcean(c, w, h); break;
+      case 'winter': this.sceneWinter(c, w, h); break;
+    }
+  }
+
+  private sceneCandy(c: CanvasRenderingContext2D, w: number, h: number): void {
+    // sun glow
+    const sun = c.createRadialGradient(w * 0.78, h * 0.16, 0, w * 0.78, h * 0.16, w * 0.55);
+    sun.addColorStop(0, 'rgba(255, 240, 180, 0.55)');
+    sun.addColorStop(1, 'rgba(255, 240, 180, 0)');
+    c.fillStyle = sun;
+    c.fillRect(0, 0, w, h);
+
+    // fluffy clouds
+    c.fillStyle = 'rgba(255, 255, 255, 0.55)';
+    this.cloud(c, w * 0.18, h * 0.18, w * 0.16);
+    this.cloud(c, w * 0.62, h * 0.10, w * 0.20);
+    c.fillStyle = 'rgba(255, 255, 255, 0.35)';
+    this.cloud(c, w * 0.42, h * 0.30, w * 0.12);
+
+    // candy hills
+    c.fillStyle = 'rgba(216, 130, 200, 0.55)';
+    this.hill(c, w, h, h * 0.78, w * 0.6, h * 0.10);
+    c.fillStyle = 'rgba(160, 90, 220, 0.7)';
+    this.hill(c, w, h, h * 0.92, w * 0.45, h * 0.12);
+
+    // distant lollipops
+    this.lollipop(c, w * 0.08, h * 0.84, w * 0.05, '#ff5b8a');
+    this.lollipop(c, w * 0.92, h * 0.86, w * 0.045, '#ffd24a');
+    this.lollipop(c, w * 0.20, h * 0.92, w * 0.04, '#7be86b');
+  }
+
+  private sceneForest(c: CanvasRenderingContext2D, w: number, h: number): void {
+    // sun
+    const sun = c.createRadialGradient(w * 0.72, h * 0.18, 0, w * 0.72, h * 0.18, w * 0.5);
+    sun.addColorStop(0, 'rgba(255, 245, 180, 0.65)');
+    sun.addColorStop(1, 'rgba(255, 245, 180, 0)');
+    c.fillStyle = sun;
+    c.fillRect(0, 0, w, h);
+
+    // distant mountains
+    c.fillStyle = 'rgba(58, 110, 80, 0.6)';
+    c.beginPath();
+    c.moveTo(0, h * 0.55);
+    c.lineTo(w * 0.18, h * 0.32);
+    c.lineTo(w * 0.32, h * 0.50);
+    c.lineTo(w * 0.55, h * 0.28);
+    c.lineTo(w * 0.72, h * 0.46);
+    c.lineTo(w, h * 0.38);
+    c.lineTo(w, h);
+    c.lineTo(0, h);
+    c.closePath();
+    c.fill();
+
+    // mid trees
+    this.treeRow(c, w, h * 0.65, 9, h * 0.18, 'rgba(28, 78, 50, 0.85)');
+    // front trees
+    this.treeRow(c, w, h * 0.86, 11, h * 0.22, 'rgba(12, 50, 30, 1)');
+  }
+
+  private sceneLava(c: CanvasRenderingContext2D, w: number, h: number): void {
+    // smoke
+    c.fillStyle = 'rgba(40, 20, 18, 0.55)';
+    this.cloud(c, w * 0.20, h * 0.16, w * 0.18);
+    this.cloud(c, w * 0.70, h * 0.12, w * 0.22);
+
+    // hot horizon glow
+    const horizon = c.createLinearGradient(0, h * 0.45, 0, h * 0.7);
+    horizon.addColorStop(0, 'rgba(255, 180, 80, 0)');
+    horizon.addColorStop(1, 'rgba(255, 120, 30, 0.8)');
+    c.fillStyle = horizon;
+    c.fillRect(0, h * 0.45, w, h * 0.25);
+
+    // distant volcanic peaks
+    c.fillStyle = 'rgba(35, 10, 8, 0.95)';
+    c.beginPath();
+    c.moveTo(0, h * 0.70);
+    c.lineTo(w * 0.15, h * 0.42);
+    c.lineTo(w * 0.22, h * 0.55);
+    c.lineTo(w * 0.30, h * 0.40);
+    c.lineTo(w * 0.42, h * 0.62);
+    c.lineTo(w * 0.55, h * 0.35);
+    c.lineTo(w * 0.65, h * 0.55);
+    c.lineTo(w * 0.78, h * 0.30);
+    c.lineTo(w * 0.92, h * 0.55);
+    c.lineTo(w, h * 0.50);
+    c.lineTo(w, h);
+    c.lineTo(0, h);
+    c.closePath();
+    c.fill();
+
+    // glowing cracks
+    c.strokeStyle = 'rgba(255, 140, 30, 0.85)';
+    c.lineWidth = 2;
+    c.shadowColor = 'rgba(255, 100, 20, 0.9)';
+    c.shadowBlur = 10;
+    for (let i = 0; i < 5; i++) {
+      const sx = w * (0.1 + i * 0.18) + Math.random() * 20;
+      c.beginPath();
+      c.moveTo(sx, h * 0.78);
+      c.lineTo(sx + 18, h * 0.86);
+      c.lineTo(sx + 8, h * 0.94);
+      c.stroke();
+    }
+    c.shadowBlur = 0;
+
+    // bottom glow
+    const bot = c.createLinearGradient(0, h * 0.85, 0, h);
+    bot.addColorStop(0, 'rgba(255, 90, 20, 0)');
+    bot.addColorStop(1, 'rgba(255, 140, 40, 0.55)');
+    c.fillStyle = bot;
+    c.fillRect(0, h * 0.85, w, h * 0.15);
+  }
+
+  private sceneOcean(c: CanvasRenderingContext2D, w: number, h: number): void {
+    // sun
+    const sun = c.createRadialGradient(w * 0.5, h * 0.18, 0, w * 0.5, h * 0.18, w * 0.4);
+    sun.addColorStop(0, 'rgba(255, 245, 200, 0.85)');
+    sun.addColorStop(0.5, 'rgba(255, 220, 150, 0.35)');
+    sun.addColorStop(1, 'rgba(255, 220, 150, 0)');
+    c.fillStyle = sun;
+    c.fillRect(0, 0, w, h);
+    c.fillStyle = 'rgba(255, 248, 200, 0.95)';
+    c.beginPath();
+    c.arc(w * 0.5, h * 0.18, w * 0.07, 0, Math.PI * 2);
+    c.fill();
+
+    // distant island
+    c.fillStyle = 'rgba(60, 100, 130, 0.7)';
+    c.beginPath();
+    c.moveTo(w * 0.65, h * 0.45);
+    c.quadraticCurveTo(w * 0.85, h * 0.32, w * 1.05, h * 0.45);
+    c.lineTo(w * 1.05, h * 0.5);
+    c.lineTo(w * 0.65, h * 0.5);
+    c.closePath();
+    c.fill();
+
+    // sea layers (waves)
+    const seaTops = [0.50, 0.62, 0.74, 0.86];
+    const seaCols = ['rgba(80, 170, 200, 0.55)', 'rgba(50, 130, 175, 0.65)', 'rgba(30, 95, 145, 0.75)', 'rgba(15, 65, 110, 0.85)'];
+    for (let i = 0; i < seaTops.length; i++) {
+      c.fillStyle = seaCols[i];
+      c.beginPath();
+      const y0 = h * seaTops[i];
+      c.moveTo(0, y0);
+      const segs = 7;
+      for (let s = 0; s <= segs; s++) {
+        const x = (s / segs) * w;
+        const y = y0 + Math.sin((s + i * 1.4) * 1.2) * h * 0.012;
+        c.lineTo(x, y);
+      }
+      c.lineTo(w, h);
+      c.lineTo(0, h);
+      c.closePath();
+      c.fill();
+    }
+
+    // coral silhouettes
+    c.fillStyle = 'rgba(20, 50, 80, 0.85)';
+    this.coral(c, w * 0.10, h * 0.95, w * 0.08);
+    this.coral(c, w * 0.85, h * 0.96, w * 0.07);
+  }
+
+  private sceneWinter(c: CanvasRenderingContext2D, w: number, h: number): void {
+    // soft sun glow
+    const sun = c.createRadialGradient(w * 0.3, h * 0.16, 0, w * 0.3, h * 0.16, w * 0.5);
+    sun.addColorStop(0, 'rgba(255, 255, 255, 0.7)');
+    sun.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    c.fillStyle = sun;
+    c.fillRect(0, 0, w, h);
+
+    // mountains
+    c.fillStyle = 'rgba(110, 130, 160, 0.8)';
+    c.beginPath();
+    c.moveTo(0, h * 0.55);
+    c.lineTo(w * 0.20, h * 0.25);
+    c.lineTo(w * 0.32, h * 0.42);
+    c.lineTo(w * 0.50, h * 0.20);
+    c.lineTo(w * 0.65, h * 0.40);
+    c.lineTo(w * 0.85, h * 0.28);
+    c.lineTo(w, h * 0.45);
+    c.lineTo(w, h);
+    c.lineTo(0, h);
+    c.closePath();
+    c.fill();
+    // snow caps
+    c.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    c.beginPath();
+    c.moveTo(w * 0.16, h * 0.30);
+    c.lineTo(w * 0.20, h * 0.25);
+    c.lineTo(w * 0.24, h * 0.30);
+    c.closePath();
+    c.fill();
+    c.beginPath();
+    c.moveTo(w * 0.46, h * 0.25);
+    c.lineTo(w * 0.50, h * 0.20);
+    c.lineTo(w * 0.54, h * 0.25);
+    c.closePath();
+    c.fill();
+    c.beginPath();
+    c.moveTo(w * 0.81, h * 0.32);
+    c.lineTo(w * 0.85, h * 0.28);
+    c.lineTo(w * 0.89, h * 0.32);
+    c.closePath();
+    c.fill();
+
+    // pine trees
+    this.treeRow(c, w, h * 0.70, 7, h * 0.15, 'rgba(50, 80, 70, 0.95)');
+    // snow ground hills
+    c.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    c.beginPath();
+    c.moveTo(0, h * 0.80);
+    c.quadraticCurveTo(w * 0.3, h * 0.70, w * 0.55, h * 0.82);
+    c.quadraticCurveTo(w * 0.8, h * 0.92, w, h * 0.78);
+    c.lineTo(w, h);
+    c.lineTo(0, h);
+    c.closePath();
+    c.fill();
+    this.treeRow(c, w, h * 0.92, 9, h * 0.18, 'rgba(35, 60, 55, 1)');
+  }
+
+  // --- scene helpers ---
+  private cloud(c: CanvasRenderingContext2D, x: number, y: number, r: number): void {
+    c.beginPath();
+    c.arc(x, y, r * 0.6, 0, Math.PI * 2);
+    c.arc(x + r * 0.5, y - r * 0.1, r * 0.55, 0, Math.PI * 2);
+    c.arc(x + r * 1.0, y, r * 0.5, 0, Math.PI * 2);
+    c.arc(x + r * 0.4, y + r * 0.15, r * 0.5, 0, Math.PI * 2);
+    c.fill();
+  }
+
+  private hill(c: CanvasRenderingContext2D, w: number, h: number, baseY: number, peakX: number, peakHeight: number): void {
+    c.beginPath();
+    c.moveTo(0, baseY);
+    c.quadraticCurveTo(peakX * 0.5, baseY - peakHeight * 0.7, peakX, baseY - peakHeight);
+    c.quadraticCurveTo((peakX + w) * 0.5, baseY - peakHeight * 0.4, w, baseY - peakHeight * 0.3);
+    c.lineTo(w, h);
+    c.lineTo(0, h);
+    c.closePath();
+    c.fill();
+  }
+
+  private lollipop(c: CanvasRenderingContext2D, x: number, y: number, r: number, col: string): void {
+    c.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+    c.lineWidth = Math.max(2, r * 0.18);
+    c.beginPath();
+    c.moveTo(x, y);
+    c.lineTo(x, y + r * 3);
+    c.stroke();
+    c.fillStyle = col;
+    c.beginPath();
+    c.arc(x, y, r, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+    c.lineWidth = Math.max(1, r * 0.12);
+    c.beginPath();
+    c.arc(x, y, r * 0.6, 0, Math.PI * 1.4);
+    c.stroke();
+  }
+
+  private treeRow(c: CanvasRenderingContext2D, w: number, baseY: number, count: number, treeH: number, color: string): void {
+    c.fillStyle = color;
+    for (let i = -1; i <= count; i++) {
+      const cx = ((i + 0.5) / count) * w + ((i * 113) % 40) - 20;
+      const tw = treeH * 0.55;
+      c.beginPath();
+      c.moveTo(cx - tw / 2, baseY);
+      c.lineTo(cx + tw / 2, baseY);
+      c.lineTo(cx, baseY - treeH);
+      c.closePath();
+      c.fill();
+      c.beginPath();
+      c.moveTo(cx - tw / 2.6, baseY - treeH * 0.45);
+      c.lineTo(cx + tw / 2.6, baseY - treeH * 0.45);
+      c.lineTo(cx, baseY - treeH * 1.08);
+      c.closePath();
+      c.fill();
+      // trunk
+      c.fillRect(cx - tw * 0.1, baseY, tw * 0.2, treeH * 0.12);
+    }
+  }
+
+  private coral(c: CanvasRenderingContext2D, x: number, y: number, h: number): void {
+    c.beginPath();
+    c.moveTo(x, y);
+    c.lineTo(x, y - h);
+    c.lineTo(x - h * 0.3, y - h * 0.7);
+    c.moveTo(x, y - h * 0.6);
+    c.lineTo(x + h * 0.35, y - h * 0.85);
+    c.lineWidth = h * 0.18;
+    c.strokeStyle = c.fillStyle as string;
+    c.lineCap = 'round';
+    c.stroke();
   }
 
   private createAmbient(w: number, h: number, randomY: boolean): AmbientParticle {
@@ -497,6 +814,7 @@ export class Renderer {
           1,
           1,
           now,
+          true,
         );
       }
     }
@@ -518,6 +836,7 @@ export class Renderer {
         valid ? 1 : 0.55,
         1.05,
         performance.now(),
+        true,
       );
     }
   }
@@ -560,30 +879,33 @@ export class Renderer {
     alpha: number,
     scale: number,
     now: number,
+    floating = false,
   ): void {
     const ctx = this.ctx;
     const pal = CANDY_PALETTES[color];
-    const inset = Math.max(2, Math.floor(size * 0.08));
+    const inset = Math.max(1, Math.floor(size * 0.025));
     const innerSize = size - inset * 2;
     const cx = px + size / 2;
     const cy = py + size / 2;
     const drawSize = innerSize * scale;
     const x = cx - drawSize / 2;
     const y = cy - drawSize / 2;
-    const r = Math.max(4, Math.floor(drawSize * 0.28));
+    const r = Math.max(3, Math.floor(drawSize * 0.20));
 
     ctx.save();
     ctx.globalAlpha = alpha;
 
-    // drop shadow base
-    ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
-    ctx.shadowBlur = Math.max(4, size * 0.22);
-    ctx.shadowOffsetY = Math.max(2, size * 0.10);
-    this.roundRect(x, y, drawSize, drawSize, r);
-    ctx.fillStyle = pal.dark;
-    ctx.fill();
-    ctx.restore();
+    // drop shadow only when floating (avoid bleeding onto neighbours when packed tightly)
+    if (floating) {
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+      ctx.shadowBlur = Math.max(6, size * 0.28);
+      ctx.shadowOffsetY = Math.max(3, size * 0.14);
+      this.roundRect(x, y, drawSize, drawSize, r);
+      ctx.fillStyle = pal.dark;
+      ctx.fill();
+      ctx.restore();
+    }
 
     // body gradient
     const bodyGrad = ctx.createLinearGradient(x, y, x, y + drawSize);
@@ -594,43 +916,209 @@ export class Renderer {
     ctx.fillStyle = bodyGrad;
     ctx.fill();
 
-    // inner rim
-    this.roundRect(x + 1, y + 1, drawSize - 2, drawSize - 2, r - 1);
+    // outer rim line for clear separation between adjacent candies
+    this.roundRect(x + 0.5, y + 0.5, drawSize - 1, drawSize - 1, r);
     ctx.strokeStyle = pal.rim;
-    ctx.lineWidth = Math.max(1, drawSize * 0.045);
-    ctx.globalAlpha = alpha * 0.5;
+    ctx.lineWidth = Math.max(1.2, drawSize * 0.05);
+    ctx.globalAlpha = alpha * 0.65;
     ctx.stroke();
+    ctx.globalAlpha = alpha;
 
-    // top glossy highlight
+    // theme-specific surface treatment
+    switch (this.theme.candyStyle) {
+      case 'gloss':  this.decorGloss(x, y, drawSize, r, alpha, now, pal); break;
+      case 'wood':   this.decorWood(x, y, drawSize, r, alpha, pal); break;
+      case 'magma':  this.decorMagma(x, y, drawSize, r, alpha, now, pal); break;
+      case 'pearl':  this.decorPearl(x, y, drawSize, r, alpha, now, pal); break;
+      case 'ice':    this.decorIce(x, y, drawSize, r, alpha, pal); break;
+    }
+
+    ctx.restore();
+  }
+
+  private decorGloss(x: number, y: number, s: number, r: number, alpha: number, now: number, pal: typeof CANDY_PALETTES['plasma']): void {
+    const ctx = this.ctx;
     ctx.globalAlpha = alpha * 0.85;
-    const glossH = drawSize * 0.45;
+    const glossH = s * 0.42;
     const glossGrad = ctx.createLinearGradient(x, y, x, y + glossH);
-    glossGrad.addColorStop(0, 'rgba(255,255,255,0.9)');
+    glossGrad.addColorStop(0, 'rgba(255,255,255,0.92)');
     glossGrad.addColorStop(1, 'rgba(255,255,255,0)');
-    this.roundRect(x + drawSize * 0.10, y + drawSize * 0.07, drawSize * 0.80, glossH, r * 0.8);
+    this.roundRect(x + s * 0.10, y + s * 0.06, s * 0.80, glossH, r * 0.8);
     ctx.fillStyle = glossGrad;
     ctx.fill();
 
-    // sparkle
-    const sparklePhase = (now / 600 + (px + py) * 0.01) % (Math.PI * 2);
-    const sparkleAlpha = Math.max(0, Math.sin(sparklePhase));
-    ctx.globalAlpha = alpha * 0.95 * sparkleAlpha;
+    const phase = (now / 600 + (x + y) * 0.01) % (Math.PI * 2);
+    const a = Math.max(0, Math.sin(phase));
+    ctx.globalAlpha = alpha * 0.9 * a;
     ctx.fillStyle = pal.shine;
     ctx.beginPath();
-    ctx.arc(x + drawSize * 0.32, y + drawSize * 0.28, drawSize * 0.075, 0, Math.PI * 2);
+    ctx.arc(x + s * 0.32, y + s * 0.28, s * 0.075, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(x + drawSize * 0.7, y + drawSize * 0.36, drawSize * 0.04, 0, Math.PI * 2);
+    ctx.arc(x + s * 0.7, y + s * 0.36, s * 0.04, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  private decorWood(x: number, y: number, s: number, _r: number, alpha: number, pal: typeof CANDY_PALETTES['plasma']): void {
+    const ctx = this.ctx;
+    // wood grain stripes
+    ctx.save();
+    ctx.beginPath();
+    this.roundRect(x + 1, y + 1, s - 2, s - 2, _r);
+    ctx.clip();
+    ctx.globalAlpha = alpha * 0.22;
+    ctx.strokeStyle = pal.rim;
+    ctx.lineWidth = Math.max(1, s * 0.04);
+    for (let i = 0; i < 3; i++) {
+      const yy = y + s * (0.28 + i * 0.22);
+      ctx.beginPath();
+      ctx.moveTo(x + s * 0.08, yy);
+      ctx.bezierCurveTo(
+        x + s * 0.35, yy - s * 0.04,
+        x + s * 0.65, yy + s * 0.04,
+        x + s * 0.92, yy,
+      );
+      ctx.stroke();
+    }
+    ctx.restore();
+    // small leaf accent
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.85;
+    ctx.fillStyle = '#7be86b';
+    ctx.beginPath();
+    ctx.ellipse(x + s * 0.78, y + s * 0.22, s * 0.10, s * 0.05, -Math.PI / 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    // top soft highlight
+    ctx.globalAlpha = alpha * 0.45;
+    const g = ctx.createLinearGradient(x, y, x, y + s * 0.35);
+    g.addColorStop(0, 'rgba(255,255,255,0.65)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    this.roundRect(x + s * 0.1, y + s * 0.06, s * 0.8, s * 0.32, _r * 0.7);
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+
+  private decorMagma(x: number, y: number, s: number, r: number, alpha: number, now: number, pal: typeof CANDY_PALETTES['plasma']): void {
+    const ctx = this.ctx;
+    // pulsing inner core
+    const pulse = 0.6 + 0.4 * Math.sin(now / 220 + (x + y) * 0.02);
+    ctx.save();
+    ctx.beginPath();
+    this.roundRect(x + 2, y + 2, s - 4, s - 4, r - 1);
+    ctx.clip();
+    const core = ctx.createRadialGradient(x + s / 2, y + s * 0.55, 0, x + s / 2, y + s * 0.55, s * 0.6);
+    core.addColorStop(0, `rgba(255, 240, 160, ${0.7 * pulse * alpha})`);
+    core.addColorStop(0.5, `rgba(255, 130, 30, ${0.45 * pulse * alpha})`);
+    core.addColorStop(1, 'rgba(255, 100, 20, 0)');
+    ctx.fillStyle = core;
+    ctx.fillRect(x, y, s, s);
+
+    // crack lines
+    ctx.globalAlpha = alpha * 0.85;
+    ctx.strokeStyle = `rgba(40, 8, 0, ${0.7 * alpha})`;
+    ctx.lineWidth = Math.max(1, s * 0.04);
+    ctx.beginPath();
+    ctx.moveTo(x + s * 0.18, y + s * 0.30);
+    ctx.lineTo(x + s * 0.40, y + s * 0.50);
+    ctx.lineTo(x + s * 0.30, y + s * 0.78);
+    ctx.moveTo(x + s * 0.55, y + s * 0.20);
+    ctx.lineTo(x + s * 0.70, y + s * 0.50);
+    ctx.lineTo(x + s * 0.85, y + s * 0.65);
+    ctx.stroke();
+    ctx.restore();
+
+    // small ember sparkle
+    ctx.globalAlpha = alpha * pulse;
+    ctx.fillStyle = '#fff5b0';
+    ctx.beginPath();
+    ctx.arc(x + s * 0.38, y + s * 0.40, s * 0.05 * pulse, 0, Math.PI * 2);
+    ctx.fill();
+    void pal;
+  }
+
+  private decorPearl(x: number, y: number, s: number, _r: number, alpha: number, now: number, pal: typeof CANDY_PALETTES['plasma']): void {
+    const ctx = this.ctx;
+    // shimmer arc
+    ctx.save();
+    ctx.beginPath();
+    this.roundRect(x + 1, y + 1, s - 2, s - 2, _r);
+    ctx.clip();
+    ctx.globalAlpha = alpha * 0.7;
+    const shimmerY = y + s * (0.4 + 0.05 * Math.sin(now / 400));
+    const sh = ctx.createLinearGradient(x, shimmerY, x, shimmerY + s * 0.18);
+    sh.addColorStop(0, 'rgba(255,255,255,0)');
+    sh.addColorStop(0.5, 'rgba(255,255,255,0.8)');
+    sh.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = sh;
+    ctx.fillRect(x, shimmerY, s, s * 0.18);
+    ctx.restore();
+
+    // round top gloss
+    ctx.globalAlpha = alpha * 0.8;
+    const gloss = ctx.createRadialGradient(x + s * 0.35, y + s * 0.30, 0, x + s * 0.35, y + s * 0.30, s * 0.45);
+    gloss.addColorStop(0, 'rgba(255,255,255,0.95)');
+    gloss.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = gloss;
+    ctx.beginPath();
+    ctx.arc(x + s * 0.35, y + s * 0.30, s * 0.45, 0, Math.PI * 2);
     ctx.fill();
 
+    // bubble dots
+    ctx.globalAlpha = alpha * 0.85;
+    ctx.fillStyle = pal.shine;
+    ctx.beginPath();
+    ctx.arc(x + s * 0.72, y + s * 0.68, s * 0.06, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x + s * 0.62, y + s * 0.78, s * 0.035, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  private decorIce(x: number, y: number, s: number, _r: number, alpha: number, pal: typeof CANDY_PALETTES['plasma']): void {
+    const ctx = this.ctx;
+    // frosted overlay
+    ctx.save();
+    this.roundRect(x + 1, y + 1, s - 2, s - 2, _r);
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.22 * alpha})`;
+    ctx.fill();
+    // top ice gloss
+    ctx.globalAlpha = alpha * 0.9;
+    const g = ctx.createLinearGradient(x, y, x, y + s * 0.5);
+    g.addColorStop(0, 'rgba(255,255,255,0.85)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    this.roundRect(x + s * 0.10, y + s * 0.06, s * 0.80, s * 0.45, _r * 0.7);
+    ctx.fillStyle = g;
+    ctx.fill();
     ctx.restore();
+
+    // snowflake
+    ctx.save();
+    ctx.translate(x + s / 2, y + s / 2);
+    ctx.strokeStyle = `rgba(255, 255, 255, ${0.85 * alpha})`;
+    ctx.lineWidth = Math.max(1, s * 0.05);
+    ctx.lineCap = 'round';
+    const arm = s * 0.30;
+    for (let i = 0; i < 6; i++) {
+      ctx.rotate(Math.PI / 3);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, -arm);
+      ctx.moveTo(0, -arm * 0.5);
+      ctx.lineTo(arm * 0.18, -arm * 0.7);
+      ctx.moveTo(0, -arm * 0.5);
+      ctx.lineTo(-arm * 0.18, -arm * 0.7);
+      ctx.stroke();
+    }
+    ctx.restore();
+    void pal;
   }
 
   private drawCandyGhost(px: number, py: number, size: number, color: RuneColor): void {
     const ctx = this.ctx;
     const pal = CANDY_PALETTES[color];
-    const inset = Math.max(2, Math.floor(size * 0.08));
-    const r = Math.max(4, Math.floor((size - inset * 2) * 0.28));
+    const inset = Math.max(1, Math.floor(size * 0.025));
+    const r = Math.max(3, Math.floor((size - inset * 2) * 0.20));
     ctx.save();
     ctx.globalAlpha = 0.45;
     this.roundRect(px + inset, py + inset, size - inset * 2, size - inset * 2, r);

@@ -169,7 +169,7 @@ export class Game {
     const placed = this.grid.place(piece, x, y);
     this.tray[slot] = null;
     this.score += placed.length;
-    this.audio.place();
+    this.audio.place(THEMES[this.level].placeSound);
     this.renderer.spawnPlacedPulse(placed);
     this.renderer.spawnDustPuff(placed);
 

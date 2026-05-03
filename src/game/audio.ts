@@ -93,10 +93,43 @@ export class AudioEngine {
     this.tone(520, 0.08, 'triangle', 0.25, 0, 700);
   }
 
-  place(): void {
+  place(style: 'pop' | 'wood' | 'stone' | 'splash' | 'crunch' = 'pop'): void {
     this.resume();
-    this.tone(330, 0.09, 'square', 0.18, 0, 220);
-    this.tone(660, 0.08, 'triangle', 0.18, 0.01);
+    switch (style) {
+      case 'pop':
+        // chunky pop with bass thud
+        this.tone(110, 0.20, 'sine', 0.55, 0, 42);
+        this.tone(380, 0.05, 'square', 0.18, 0, 200);
+        this.tone(660, 0.07, 'triangle', 0.16, 0.01, 440);
+        this.noise(0.06, 0.10, 0, 1200);
+        break;
+      case 'wood':
+        // wooden knock
+        this.tone(85, 0.22, 'sine', 0.55, 0, 38);
+        this.tone(220, 0.10, 'triangle', 0.30, 0, 120);
+        this.tone(540, 0.04, 'square', 0.16, 0, 320);
+        this.noise(0.08, 0.16, 0, 600);
+        break;
+      case 'stone':
+        // heavy stone clack with deep rumble
+        this.tone(70, 0.30, 'sine', 0.65, 0, 30);
+        this.tone(180, 0.08, 'square', 0.28, 0, 90);
+        this.tone(420, 0.03, 'square', 0.18, 0, 260);
+        this.noise(0.12, 0.22, 0, 250);
+        break;
+      case 'splash':
+        // wet splash
+        this.tone(160, 0.18, 'sine', 0.45, 0, 60);
+        this.tone(800, 0.10, 'sine', 0.10, 0, 1800);
+        this.noise(0.18, 0.20, 0, 2400);
+        break;
+      case 'crunch':
+        // ice crunch
+        this.tone(95, 0.22, 'sine', 0.50, 0, 38);
+        this.tone(2400, 0.05, 'square', 0.10, 0, 3600);
+        this.noise(0.16, 0.28, 0, 3200);
+        break;
+    }
   }
 
   invalid(): void {

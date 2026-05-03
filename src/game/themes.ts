@@ -1,4 +1,6 @@
 export type AmbientKind = 'sparkle' | 'leaves' | 'embers' | 'bubbles' | 'snow';
+export type CandyStyle = 'gloss' | 'wood' | 'magma' | 'pearl' | 'ice';
+export type PlaceSound = 'pop' | 'wood' | 'stone' | 'splash' | 'crunch';
 
 export interface Theme {
   id: string;
@@ -17,6 +19,8 @@ export interface Theme {
   ambientColors: string[];
   ambientCount: number;
   dustColor: string;
+  candyStyle: CandyStyle;
+  placeSound: PlaceSound;
 }
 
 export const THEMES: Theme[] = [
@@ -37,6 +41,8 @@ export const THEMES: Theme[] = [
     ambientColors: ['#ffffff', '#ffd1e8', '#fff5b8'],
     ambientCount: 22,
     dustColor: '#fff0fa',
+    candyStyle: 'gloss',
+    placeSound: 'pop',
   },
   {
     id: 'forest',
@@ -55,6 +61,8 @@ export const THEMES: Theme[] = [
     ambientColors: ['#7be86b', '#cfd866', '#f29b3a', '#a85a1a'],
     ambientCount: 14,
     dustColor: '#d8b87a',
+    candyStyle: 'wood',
+    placeSound: 'wood',
   },
   {
     id: 'lava',
@@ -73,6 +81,8 @@ export const THEMES: Theme[] = [
     ambientColors: ['#ffd84a', '#ff7a1a', '#ff3a1a'],
     ambientCount: 26,
     dustColor: '#ffb87a',
+    candyStyle: 'magma',
+    placeSound: 'stone',
   },
   {
     id: 'ocean',
@@ -91,6 +101,8 @@ export const THEMES: Theme[] = [
     ambientColors: ['#e0f7ff', '#a8e0f5', '#ffffff'],
     ambientCount: 18,
     dustColor: '#fff5d0',
+    candyStyle: 'pearl',
+    placeSound: 'splash',
   },
   {
     id: 'winter',
@@ -109,5 +121,7 @@ export const THEMES: Theme[] = [
     ambientColors: ['#ffffff', '#e8f4ff'],
     ambientCount: 32,
     dustColor: '#ffffff',
+    candyStyle: 'ice',
+    placeSound: 'crunch',
   },
 ];

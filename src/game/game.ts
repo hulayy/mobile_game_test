@@ -2,11 +2,13 @@ import { Grid } from './grid';
 import { generateTriple } from './generator';
 import { Renderer, type DragState } from './renderer';
 import { AudioEngine } from './audio';
+import { THEMES } from './themes';
 import type { Piece, RuneColor } from './types';
 
 const BEST_KEY = 'glyph-grid:best';
 const MUSIC_KEY = 'sugar-drop:music';
 const SFX_KEY = 'sugar-drop:sfx';
+const LINES_PER_LEVEL = 4;
 
 export class Game {
   grid = new Grid();
@@ -20,6 +22,8 @@ export class Game {
   renderer: Renderer;
   audio = new AudioEngine();
   canvas: HTMLCanvasElement;
+  level = 0;
+  linesCleared = 0;
 
   private scoreEl: HTMLElement;
   private bestEl: HTMLElement;
@@ -28,6 +32,10 @@ export class Game {
   private finalScoreEl: HTMLElement;
   private musicBtn: HTMLElement | null;
   private sfxBtn: HTMLElement | null;
+  private levelEmojiEl: HTMLElement | null;
+  private levelNameEl: HTMLElement | null;
+  private levelNumEl: HTMLElement | null;
+  private levelStripEl: HTMLElement | null;
 
   private lastFrame = 0;
   private rafId = 0;
@@ -42,10 +50,15 @@ export class Game {
     this.finalScoreEl = document.getElementById('final-score')!;
     this.musicBtn = document.getElementById('toggle-music');
     this.sfxBtn = document.getElementById('toggle-sfx');
+    this.levelEmojiEl = document.getElementById('level-emoji');
+    this.levelNameEl = document.getElementById('level-name');
+    this.levelNumEl = document.getElementById('level-num');
+    this.levelStripEl = document.getElementById('level-strip');
 
     this.best = Number(localStorage.getItem(BEST_KEY) ?? 0);
     this.audio.setMusicEnabled(localStorage.getItem(MUSIC_KEY) !== '0');
     this.audio.setSfxEnabled(localStorage.getItem(SFX_KEY) !== '0');
+    this.renderer.setTheme(THEMES[0]);
     this.refreshTray();
     this.bindInput();
     this.bindResize();
@@ -55,6 +68,7 @@ export class Game {
     this.renderer.resize();
     this.updateHud();
     this.updateAudioButtons();
+    this.updateLevelStrip(false);
     this.loop(performance.now());
   }
 
@@ -157,6 +171,7 @@ export class Game {
     this.score += placed.length;
     this.audio.place();
     this.renderer.spawnPlacedPulse(placed);
+    this.renderer.spawnDustPuff(placed);
 
     // capture colors before clearing
     const beforeCells: (RuneColor | null)[][] = this.grid.cells.map((row) => row.slice());
@@ -192,6 +207,17 @@ export class Game {
 
       this.audio.clearLines(this.combo, totalLines);
       if (this.combo > 1) this.audio.combo(this.combo);
+
+      this.linesCleared += totalLines;
+      const newLevel = Math.floor(this.linesCleared / LINES_PER_LEVEL) % THEMES.length;
+      if (newLevel !== this.level) {
+        this.level = newLevel;
+        const theme = THEMES[this.level];
+        this.renderer.setTheme(theme);
+        this.renderer.spawnLevelBanner(theme);
+        this.audio.levelUp();
+        this.updateLevelStrip(true);
+      }
 
       // float text "+score"
       const cx = cellsWithColor.reduce((a, c) => a + c.x, 0) / cellsWithColor.length;
@@ -242,9 +268,26 @@ export class Game {
     this.comboTimer = 0;
     this.gameOver = false;
     this.drag = null;
+    this.level = 0;
+    this.linesCleared = 0;
+    this.renderer.setTheme(THEMES[0]);
     this.refreshTray();
     this.overlayEl.classList.add('hidden');
     this.updateHud();
+    this.updateLevelStrip(false);
+  }
+
+  private updateLevelStrip(bump: boolean): void {
+    const theme = THEMES[this.level];
+    if (this.levelEmojiEl) this.levelEmojiEl.textContent = theme.emoji;
+    if (this.levelNameEl) this.levelNameEl.textContent = theme.name;
+    if (this.levelNumEl) this.levelNumEl.textContent = String(this.level + 1);
+    if (bump && this.levelStripEl) {
+      this.levelStripEl.classList.remove('bump');
+      void this.levelStripEl.offsetWidth;
+      this.levelStripEl.classList.add('bump');
+      window.setTimeout(() => this.levelStripEl?.classList.remove('bump'), 600);
+    }
   }
 
   private updateHud(bump = false): void {

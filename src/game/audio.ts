@@ -124,6 +124,16 @@ export class AudioEngine {
     this.tone(f * 1.5, 0.12, 'sine', 0.14, 0.04);
   }
 
+  levelUp(): void {
+    this.resume();
+    const notes = [523.25, 659.25, 783.99, 1046.5, 1318.51];
+    for (let i = 0; i < notes.length; i++) {
+      this.tone(notes[i], 0.22, 'triangle', 0.24, i * 0.07);
+      this.tone(notes[i] * 2, 0.16, 'sine', 0.14, i * 0.07);
+    }
+    this.noise(0.4, 0.07, 0, 1800);
+  }
+
   gameOver(): void {
     this.resume();
     const notes = [523.25, 392, 329.63, 261.63];
